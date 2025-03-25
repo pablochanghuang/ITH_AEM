@@ -14,5 +14,14 @@ conda env create -f ITH_AEM_Project.yml
 conda activate ITH_AEM_Project
 
 
-**Project Contents:**
-* 
+### **Project Contents:**
+
+- **`1D_FDEM_REALDATA_least_square_inversion.ipynb`**: Notebook with a cleaner workflow to read and plot the original data. Data is separated by lines and soundings in Block 53 of the described survey, read from a CSV file (provided in the Google Drive link below). Runs the original L2-norm inversion by Marco Couto.
+
+- **`1D_Forward_Simulation.ipynb`**: Forward simulation of a 1D model with features that mimic the expected permafrost structure from the project. The survey design is set up to match the one described above.
+
+- **`1D_Simulation_Inversion.ipynb`**: L2 and sparse inversion performed on the synthetic data generated from the forward simulation. *Note: there is currently a bug affecting the inversion results.*
+
+- **`fdem_1d_least_square_inversion_original.ipynb`**: Original inversion workflow notebook by Marco Couto. May not run correctly due to format differences and experimental code.
+
+- **`environment.yml`**: Environment configuration file to set up all necessary dependencies as described above. Enables running all Jupyter notebooks included in the project.
