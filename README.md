@@ -8,7 +8,7 @@ In this context, data on permafrost layers are essential for the planning and de
 
 The main goal is to perform 1D sparse inversions of single soundings along selected lines in Block 53 of the ITH data, comparing the results with previous inversions conducted by Marco Couto from the GIF group. Additionally, if time permits, I will explore different methods for integrating supporting datasets to improve the inversion results. This may include incorporating surface constraints or even performing joint inversions with InSAR data. A key challenge is accurately mapping the shallow permafrost areas, making the inclusion of complementary datasets essential for refining the results. These additions also lay the groundwork for future research directions.
 
-**Setting up environment:**
+### **Setting up environment:**
 This project uses a custom Conda environment to ensure all required packages are available for geophysical simulation, data analysis, and visualization. To create and activate the environment:
 conda env create -f ITH_AEM_Project.yml
 conda activate ITH_AEM_Project
@@ -25,3 +25,8 @@ conda activate ITH_AEM_Project
 - **`fdem_1d_least_square_inversion_original.ipynb`**: Original inversion workflow notebook by Marco Couto. May not run correctly due to format differences and experimental code.
 
 - **`environment.yml`**: Environment configuration file to set up all necessary dependencies as described above. Enables running all Jupyter notebooks included in the project.
+
+
+### **Data Drive:**
+
+Real data csv file: https://drive.google.com/file/d/1Y1yTpyrHJLez2_wiJxF1hLWxP7nustEx/view?usp=share_link
