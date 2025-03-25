@@ -1,4 +1,4 @@
-name: ITH_AEM Project
+name: ITH_AEM_Project
 channels:
   - conda-forge
 dependencies:
