@@ -1,5 +1,6 @@
 # ITH_AEM
 EOSC 556 Final Project
+
 Pablo Chang Huang
 
 The Inuvik-Tuktoyaktuk Highway (ITH) is a 138 km all-season highway that opened in 2017 [1] in the north of the Northwest Territories under a contract with the Department of Infrastructure. It is the first Canadian highway connecting to the Arctic Ocean. This highway is essential for the residents of Tuktoyaktuk for tourism, commerce, and business purposes. Due to the regional conditions, this highway is at risk of being affected by permafrost, perennially frozen ground, degradation.
