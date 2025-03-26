@@ -1,4 +1,5 @@
-# ITH_AEM
+**"Sounding inversions from the Inuvik-Tuktoyaktuk Highway (ITH) Airborne Electromagnetics (AEM) survey"**
+
 EOSC 556 Final Project
 
 Pablo Chang Huang
@@ -13,20 +14,31 @@ This project uses a custom Conda environment to ensure all required packages are
 conda env create -f ITH_AEM_Project.yml
 conda activate ITH_AEM_Project
 
+- **`environment.yml`**: Environment configuration file to set up all necessary dependencies as described above. Enables running all Jupyter notebooks included in the project.
+
 
 ### **Project Contents:**
 
-- **`1D_FDEM_REALDATA_least_square_inversion.ipynb`**: Notebook with a cleaner workflow to read and plot the original data. Data is separated by lines and soundings in Block 53 of the described survey, read from a CSV file (provided in the Google Drive link below). Runs the original L2-norm inversion by Marco Couto.
+1. `1D_FDEM_REALDATA_least_square_inversion.ipynb`**: Notebook with a cleaner workflow to read and plot the original data. Data is separated by lines and soundings in Block 53 of the described survey, read from a CSV file (provided in the Google Drive link below). Runs the original L2-norm inversion by Marco Couto.
 
-- **`1D_Forward_Simulation.ipynb`**: Forward simulation of a 1D model with features that mimic the expected permafrost structure from the project. The survey design is set up to match the one described above.
+2. `1D_Forward_Simulation.ipynb`**: Forward simulation of a 1D model with features that mimic the expected permafrost structure from the project. The survey design is set up to match the one described above.
 
-- **`1D_Simulation_Inversion.ipynb`**: L2 and sparse inversion performed on the synthetic data generated from the forward simulation. *Note: there is currently a bug affecting the inversion results.*
+3. `1D_Simulation_Inversion.ipynb`**: L2 and sparse inversion performed on the synthetic data generated from the forward simulation. *Note: there is currently a bug affecting the inversion results.*
 
+
+**Complementary:**
 - **`fdem_1d_least_square_inversion_original.ipynb`**: Original inversion workflow notebook by Marco Couto. May not run correctly due to format differences and experimental code.
-
-- **`environment.yml`**: Environment configuration file to set up all necessary dependencies as described above. Enables running all Jupyter notebooks included in the project.
 
 
 ### **Data Drive:**
 
 Real data csv file: https://drive.google.com/file/d/1Y1yTpyrHJLez2_wiJxF1hLWxP7nustEx/view?usp=share_link
+
+
+
+### **References:**
+
+[1] Department of Infrastructure, Government of Northwest Territories, "Inuvik Tuktoyaktuk Highway Project," [Online]. Available: \url{https://www.inf.gov.nt.ca/en/ITH}. [Accessed: Mar-2025].
+
+
+[2] ARCUS, "How is permafrost degradation affecting infrastructure?", *ARCUS*, [Online]. Available: \url{https://www.arcus.org/search-program/arctic-answers/permafrost-and-infrastructure/briefs}. [Accessed: Mar-2025].
