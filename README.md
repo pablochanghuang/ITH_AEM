@@ -1,4 +1,4 @@
-**"Sounding inversions from the Inuvik-Tuktoyaktuk Highway (ITH) Airborne Electromagnetics (AEM) survey"**
+**Sounding inversions from the Inuvik-Tuktoyaktuk Highway (ITH) Airborne Electromagnetics (AEM) survey**
 
 EOSC 556 Final Project
 
