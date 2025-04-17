@@ -194,29 +194,28 @@ def data_object(line_station, relative_error, noise_floor, survey, freq_avoid, f
 
     return data_object
 
-def mapping_forward_objects(layer_thicknesses, n_layers, survey, skin_depth=None):
+def mapping_forward_objects(layer_thicknesses = [], n_layers = 1, survey = None, depth_max = None, depth_min = None, geometric_factor = None):
 
     #### Define model mesh ####
     if n_layers > 1:
         #Set up layers for L2 inversion:
-        ### Depth max ###
-        #skin_depth = 503*np.sqrt(resistivities_hsp/np.min(frequencies))
-        #depth_max = 2*skin_depth  # depth to lowest layer
+        ### Depth max ### ~ From skin depth
 
         ### Mesh Definition ###
-        #depth_min = 1                      # top layer thickness
-        #geometric_factor = 1.3                # rate of thickness increase
 
         #Increase layer thickness by geometric factor until depth_max
-        #layer_thicknesses = [depth_min]
-        #while np.sum(layer_thicknesses) < depth_max:
-        #    layer_thicknesses.append(geometric_factor*layer_thicknesses[-1])
+        layer_thicknesses = [depth_min]
+        while np.sum(layer_thicknesses) < depth_max:
+            layer_thicknesses.append(geometric_factor*layer_thicknesses[-1])
 
         #Set number of layers
-        #n_layers = len(layer_thicknesses) + 1  # Number of layers
-        print("TODO FOR L2")
+        n_layers = len(layer_thicknesses) + 1  # Number of layers
+
+        #set for Simulations
+        thicknesses = layer_thicknesses
 
         h = np.r_[layer_thicknesses, layer_thicknesses[-1]]
+
     
     else:
         thicknesses = []
@@ -226,12 +225,6 @@ def mapping_forward_objects(layer_thicknesses, n_layers, survey, skin_depth=None
 
     #### Define the mapping ####
     log_mapping = maps.ExpMap(nP=n_layers)
-
-    # Starting model is log-conductivity values (S/m)
-    #starting_conductivity_model_hsp = np.log(1e-3 * np.ones(n_layers_halfspace))
-
-    # Reference model, same as starting 
-    #reference_conductivity_model_hsp = starting_conductivity_model.copy()
 
     #### Define Simulation Object (physics, forward simulation)####
 
@@ -244,7 +237,7 @@ def mapping_forward_objects(layer_thicknesses, n_layers, survey, skin_depth=None
     #### Create regularization mesh ####
     regularization_mesh = TensorMesh([h], "N")
 
-    return regularization_mesh, log_mapping, simulation
+    return regularization_mesh, log_mapping, simulation, n_layers
 
 def regularization_object(regularization_mesh, reference_conductivity_model, alpha_s, alpha_x, sparse_regularization=False):
 
@@ -261,12 +254,12 @@ def regularization_object(regularization_mesh, reference_conductivity_model, alp
         )
 
     #Set regularization parameters:
-    reg.alpha_s = 1e-5 
-    reg.alpha_x= 1
+    reg.alpha_s = alpha_s
+    reg.alpha_x= alpha_x
 
     return reg
 
-def inversion_setup(dmis, reg, opt, sparse_inversion=False):
+def inversion_setup(dmis, reg, opt, beta_ratio  = 1e1, sparse_inversion=False):
     inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
 
     if sparse_inversion:
@@ -276,7 +269,7 @@ def inversion_setup(dmis, reg, opt, sparse_inversion=False):
     else:
         #Set inversion directives:
         update_jacobi = directives.UpdatePreconditioner(update_every_iteration=True)
-        starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=5)
+        starting_beta = directives.BetaEstimate_ByEig(beta0_ratio = beta_ratio)
         beta_schedule = directives.BetaSchedule(coolingFactor=1.5, coolingRate=2)
         target_misfit = directives.TargetMisfit(chifact=1.0)
         #save_L2_hp = directives.SaveOutputDictEveryIteration()
