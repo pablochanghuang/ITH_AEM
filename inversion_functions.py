@@ -239,13 +239,25 @@ def mapping_forward_objects(layer_thicknesses = [], n_layers = 1, survey = None,
 
     return regularization_mesh, log_mapping, simulation, n_layers
 
-def regularization_object(regularization_mesh, reference_conductivity_model, alpha_s, alpha_x, sparse_regularization=False):
+def regularization_object(regularization_mesh, reference_conductivity_model, alpha_s, alpha_x, sparse_regularization=False, norms=[0,0]):
 
     if sparse_regularization:
+        #Set up Sparse regularization
+        # Define regularization
+        reg = regularization.Sparse(
+                regularization_mesh,
+                length_scale_x=10.0,
+                reference_model=reference_conductivity_model,
+                reference_model_in_smooth=False
+            )
+        #Define sparse and blocky norms
 
-        print("TODO Spparse reg")
+        # norms[0] controls sparsity in the model values.
+        # norms[1] controls sparsity in the model gradients (i.e., how blocky vs. smooth the changes are).
+        reg.norms = norms
     
     else:
+        #Set up L2 and halfspace regularization
         reg = regularization.WeightedLeastSquares(
         regularization_mesh,
         length_scale_x=10.0,
@@ -254,38 +266,112 @@ def regularization_object(regularization_mesh, reference_conductivity_model, alp
         )
 
     #Set regularization parameters:
-    reg.alpha_s = alpha_s
-    reg.alpha_x= alpha_x
+    reg.alpha_s = alpha_s  #Model to reference model
+    reg.alpha_x= alpha_x #Controls roughness penalty
 
     return reg
 
-def inversion_setup(dmis, reg, opt, beta_ratio  = 1e1, sparse_inversion=False):
-    inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
+def inversion_setup(dmis, reg, opt, single_beta = None, beta_ratio  = 1e1, sparse_inversion=False, IRLS_coolrate=2, IRLS_coolfactor=1.5 , IRLS_percentile=100, inv_prob_return = False, save_outputs=False):
 
     if sparse_inversion:
+        #Check if single beta for sparse inversion
+        if single_beta is not None:
+            inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt, beta = single_beta)
 
-        print("TODO Spparse reg")
+            #Inversion Directives
+            update_jacobi = directives.UpdatePreconditioner() #Helps stabilize each IRLS step.
+
+            # Directive for the IRLS 
+            update_IRLS = directives.UpdateIRLS(cooling_rate = IRLS_coolrate, # update weights every x iterations
+                                                cooling_factor=IRLS_coolfactor, # stronger update to weights
+                                                percentile = IRLS_percentile, #controls how much of the model is affected by reweighting.
+                                                max_irls_iterations=50)
+
+            save_output = directives.SaveOutputDictEveryIteration()
+
+            directives_list = [
+                update_IRLS, 
+                update_jacobi,
+                save_output
+            ]
+            print("SINGLE BETA")
+        
+        else: 
+            inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
+
+            #Inversion Directives
+            update_jacobi = directives.UpdatePreconditioner() #Helps stabilize each IRLS step.
+            starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=beta_ratio)
+
+            # Directive for the IRLS 
+            update_IRLS = directives.UpdateIRLS(cooling_rate = IRLS_coolrate, # update weights every x iterations
+                                                cooling_factor=IRLS_coolfactor, # stronger update to weights
+                                                percentile = IRLS_percentile, #controls how much of the model is affected by reweighting.
+                                                max_irls_iterations=50)
+            
+            save_output = directives.SaveOutputDictEveryIteration()
+
+            directives_list = [
+                update_IRLS, 
+                update_jacobi,
+                starting_beta,
+                save_output
+            ]
+
     
+    elif single_beta is not None:
+
+        #Set inversion without beta cooling, single beta value
+        inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt, beta = single_beta)
+
+        #Set inversion directives:
+        update_jacobi = directives.UpdatePreconditioner(update_every_iteration=True)
+        #starting_beta = directives.BetaEstimate_ByEig(beta0_ratio = beta_ratio)
+        #beta_schedule = directives.BetaSchedule(coolingFactor=1.5, coolingRate=2)
+        target_misfit = directives.TargetMisfit(chifact=1.0)
+        save_output = directives.SaveOutputDictEveryIteration()
+
+        directives_list = [
+            update_jacobi,
+            #starting_beta,
+            #beta_schedule,
+            target_misfit,
+            save_output
+        ]
+
     else:
+        inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
+
         #Set inversion directives:
         update_jacobi = directives.UpdatePreconditioner(update_every_iteration=True)
         starting_beta = directives.BetaEstimate_ByEig(beta0_ratio = beta_ratio)
         beta_schedule = directives.BetaSchedule(coolingFactor=1.5, coolingRate=2)
         target_misfit = directives.TargetMisfit(chifact=1.0)
-        #save_L2_hp = directives.SaveOutputDictEveryIteration()
+        save_output = directives.SaveOutputDictEveryIteration()
 
         directives_list = [
+            save_output, 
             update_jacobi,
             starting_beta,
             beta_schedule,
             target_misfit,
-            #save_L2_hp
         ]
 
     #### Combine the inverse problem and the set of directives ####
     inv = inversion.BaseInversion(inv_prob, directives_list)
+    
+    # If want to return also inv_prob
 
-    return inv
+    
+    if inv_prob_return:
+        if save_outputs:
+            return inv, inv_prob, save_output
+        else:
+            return inv, inv_prob
+    else:
+        if save_outputs:
+            return inv, save_output
+        return inv
 
 
 

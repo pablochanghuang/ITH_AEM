@@ -45,7 +45,7 @@ class DummyFile(object):
 warnings.filterwarnings("ignore")
 
 # Create function of inversion:
-def sparse_inversion(line_station, conductivities_hsp, freq_avoid = [], uncertainty_floor = 5.0e0, relative_error = 0.05, n_layers = 2, depth_max = 500, depth_min = 1, geometric_factor = 1.2, alpha_s = 1e-5, alpha_x = 1, single_beta = None, beta_ratio = 1e1, inv_prob_return = False):
+def halfspace_inversion(line_station, freq_avoid = [8200., 40000., 135000.], uncertainty_floor = 5.0e0, relative_error = 0.05, layer_thick_halfspace = [1000], n_layers_halfspace = 1, alpha_s = 1e-5, alpha_x = 1):
 
     ## Calculate the height 
 
@@ -58,49 +58,40 @@ def sparse_inversion(line_station, conductivities_hsp, freq_avoid = [], uncertai
     ### Data ###
     data_object = inversion_functions.data_object(line_station, relative_error = relative_error, noise_floor = uncertainty_floor, survey = survey, freq_avoid = freq_avoid)
 
-    ### Mesh and Mapping ### 
-    regularization_mesh_Sp, log_conductivity_Sp_map, simulation_Sp, n_layers = inversion_functions.mapping_forward_objects(n_layers = 2, survey = survey, depth_max = depth_max, depth_min = depth_min, geometric_factor = geometric_factor)
+    ### Mesh and Mapping ###    Si
+    regularization_mesh_hs, log_conductivity_halfspace_map, simulation_hsp_L2, n_layers = inversion_functions.mapping_forward_objects(layer_thicknesses = layer_thick_halfspace, n_layers = n_layers_halfspace, survey = survey)
 
     ### Starting Models ###
     
-    # Starting model is log-conductivity values (S/m) from halfspace results
-    starting_conductivity_model_Sp = np.log(conductivities_hsp * np.ones(n_layers))
-
-    # Reference model is also log-resistivity values (S/m)
-    reference_conductivity_model_Sp = starting_conductivity_model_Sp.copy()
+    # Starting model is log-conductivity values (S/m)
+    starting_conductivity_model_hsp = np.log(1e-3 * np.ones(n_layers_halfspace))
+    
+    # Reference model, same as starting 
+    reference_conductivity_model_hsp = starting_conductivity_model_hsp.copy()
 
     ### Data Misfit ###
-    dmis_hsp_Sp = data_misfit.L2DataMisfit(simulation=simulation_Sp, data=data_object)
+    dmis_hsp_L2 = data_misfit.L2DataMisfit(simulation=simulation_hsp_L2, data=data_object)
 
     ### Regularization ### No
-    reg_Sp = inversion_functions.regularization_object(regularization_mesh_Sp, reference_conductivity_model = reference_conductivity_model_Sp , alpha_s = alpha_s, alpha_x = alpha_x, sparse_regularization=True, norms = [0,0])
+    reg_L2 = inversion_functions.regularization_object(regularization_mesh_hs, reference_conductivity_model = reference_conductivity_model_hsp , alpha_s = alpha_s, alpha_x = alpha_x)
 
     ### Optimization ### Si
-    opt_Sp = optimization.InexactGaussNewton(
-    maxIter=100, maxIterLS=20, maxIterCG=20, tolCG=1e-3
-    )
+    opt_L2 = optimization.InexactGaussNewton(maxIter=100, maxIterLS=20, maxIterCG=20, tolCG=1e-3)
 
     ### Inversion Parameters ###
-    # Combine the inverse problem and the set of directives
-    if inv_prob_return:
-        inv_Sp, inv_prob = inversion_functions.inversion_setup(dmis_hsp_Sp, reg_Sp, opt_Sp, single_beta = single_beta, beta_ratio = 1e2,  sparse_inversion=True, IRLS_coolrate=3, IRLS_coolfactor=10, IRLS_percentile=95,inv_prob_return = inv_prob_return)
-    else: 
-        inv_Sp = inversion_functions.inversion_setup(dmis_hsp_Sp, reg_Sp, opt_Sp, single_beta = single_beta, beta_ratio = 1e2,  sparse_inversion=True, IRLS_coolrate=3, IRLS_coolfactor=10, IRLS_percentile=95)
+    inv_L2 = inversion_functions.inversion_setup(dmis_hsp_L2, reg_L2, opt_L2)
 
     ### Run inversion ###
-    recovered_model_Sp = inv_Sp.run(starting_conductivity_model_Sp)
+    recovered_halfspace_model_L2 = inv_L2.run(starting_conductivity_model_hsp)
 
     ### Get recovered model ###
     ## Get the recovered halfspace resistivity from model estimated
-    conductivities_Sp = log_conductivity_Sp_map * recovered_model_Sp
-    #resistivities_l2 = 1 / conductivities_l2
+    conductivities_hsp = log_conductivity_halfspace_map * recovered_halfspace_model_L2
+    resistivities_hsp = 1 / conductivities_hsp
 
-    if inv_prob_return:
-        return regularization_mesh_Sp, log_conductivity_Sp_map, simulation_Sp, inv_Sp, inv_prob, recovered_model_Sp, conductivities_Sp, data_object
-    else: 
-        return conductivities_Sp
+    return conductivities_hsp
 
-def main(line_no = 'L530030', single_beta=None, conductivities_hsp = 0.03422309704591167, save_file = True):
+def main(line_no = 'L530030',  save_file = True):
     #### Reading Data ####
 
     # Get the current working directory (where the notebook is running)
@@ -132,22 +123,17 @@ def main(line_no = 'L530030', single_beta=None, conductivities_hsp = 0.034223097
     numeric_filtered_line = line.select_dtypes(include=["number"])
     line = numeric_filtered_line.groupby("fid", as_index=False).mean()
 
-
-    #### Set halspace conductivities ####
-
-    # Set Halfspace conductivity:
-    resistivities_hsp = 1/conductivities_hsp
-
     #### Loop through soundings ####
 
     # Make loop to run for every single fid in data
 
     # Get valid fid values
     line_stations = line.fid.values
-    n_stations = len(line_stations)
+    #n_stations = len(line_stations)
+    n_layers = 1
 
     # Preallocate output array
-    results = []  # +1 for fid
+    results = np.zeros((len(line_stations), n_layers + 3))  # +3 for fid + dist + dtm
 
     # Start global timer
     start_time = time.time()
@@ -161,11 +147,6 @@ def main(line_no = 'L530030', single_beta=None, conductivities_hsp = 0.034223097
         # Calculate terrain clearance (height of tx above surface)
         line_station.loc['height_tx'] = line_station['gpsz_tx'] - line_station['dtm']
 
-        ### Calculate max depth ###
-        min_frequency = 400
-        skin_depth = 503*np.sqrt(resistivities_hsp/np.min(min_frequency))
-        depth_max = 2*skin_depth  # depth to lowest layer
-
         # Print progress every 100 stations
         if (i + 1) % 10 == 0 or (i + 1) == len(line_stations):
             elapsed = time.time() - start_time
@@ -174,33 +155,30 @@ def main(line_no = 'L530030', single_beta=None, conductivities_hsp = 0.034223097
 
         ### Run the inversion ### (without printing stuff)
         with contextlib.redirect_stdout(DummyFile()):
-            conductivities_l2 = sparse_inversion(line_station, conductivities_hsp, depth_max = depth_max, single_beta = single_beta)
+            conductivities_hsp = halfspace_inversion(line_station)
         
         ### Save fid and conductivities ###
-        #results[i, 0] = fid_n
-        #results[i, 1:] = conductivities_l2
-
-        row = [fid_n] + [line_station.dist] + [line_station.dtm] + list(conductivities_l2)  # model can be any-length array
-        results.append(row)
+        results[i, 0] = fid_n
+        results[i, 1] = line_station.dist #Distance of sounding in line
+        results[i, 2] = line_station.dtm #Altitude for the sounding
+        results[i, 3:] = conductivities_hsp
 
     ### Save datafile ###
 
     # Create column names
-    n_layers = max(len(row) - 3 for row in results)
     column_names = ['fid'] + ['dist'] + ['dtm'] + [f'cond_{i+1}' for i in range(n_layers)]
 
     # Convert to DataFrame
-    df = pd.DataFrame(np.array(results), columns=column_names)
+    df = pd.DataFrame(results, columns=column_names)
 
     # Save to CSV
+     # Save to CSV
     if save_file:
-        csv_filename = f"outputs/{line_no}_sparse_conductivities.csv"
+        csv_filename = f"outputs/{line_no}_halfspace_conductivities.csv"
         df.to_csv(csv_filename, index=False)
         print(f"\n CSV saved to {csv_filename}")
 
-
 #Run if script if executed
 if __name__ == "__main__":
-    print("Running Sparse inversions with set up beta:")
-    main(conductivities_hsp = 0.03422309704591167)
-    #main(single_beta=69.44896118273468, conductivities_hsp = 0.03422309704591167)
+    print("Running Halfspace inversions:")
+    main()
